@@ -1,39 +1,60 @@
-from transformers import AutoTokenizer
-import torch
+import ollama
 
-from model import CodeReviewBot
+def _is_python(code):
+    response = ollama.chat(
+        model="llama3",
+        messages=[
+            {
+                "role": "user",
+                "content": f"""Is the following code written in Python?
+Reply with ONLY one word: YES or NO. No explanation.
 
-tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
-model = CodeReviewBot()
-model.eval() 
-
-
-def tokenize_code(code):
-    tokens = tokenizer(
-        code,
-        return_tensors="pt",     
-        max_length=512,          
-        padding="max_length",    
-        truncation=True         
+Code:
+{code}"""
+            }
+        ]
     )
-    return tokens["input_ids"], tokens["attention_mask"]
+    answer = response["message"]["content"].strip().upper()
+    return answer.startswith("YES")
 
 def review_code(code):
-    input_ids, mask = tokenize_code(code)
-    
-    with torch.no_grad():  
-        raw_output = model(input_ids, mask)
-        scores = torch.sigmoid(raw_output) * 10
-    
-    return {
-        "quality":      round(scores[0][0].item(), 2),
-        "bug_risk":     round(scores[0][1].item(), 2),
-        "readability":  round(scores[0][2].item(), 2),
-        "complexity":   round(scores[0][3].item(), 2),
-    }
+    if not _is_python(code):
+        return "❌ Error: Only Python code is accepted for review. Please submit valid Python code."
 
-code = """
-def add(a, b):
-    return a + b
-"""
-print(review_code(code))
+    response = ollama.chat(
+        model="llama3",
+        messages=[
+            {
+                "role": "user",
+                "content": f"""Review this Python code. Be specific with line numbers. No vague feedback.
+
+## 1. BUGS
+Runtime errors, wrong logic. Line number + reason.
+
+## 2. INDENTATION
+Tabs vs spaces, inconsistent levels, wrong nesting, PEP 8 (4 spaces). Line number + issue.
+
+## 3. COMPLEXITY
+Rate: Low/Medium/High. Flag overly long or deeply nested blocks. Suggest decomposition.
+
+## 4. READABILITY
+Non-descriptive or non-snake_case names. Missing docstrings. Lines >79 chars. Bad/missing comments.
+
+## 5. PERFORMANCE
+Inefficient loops, redundant calls, better builtins/data structures, I/O inside loops.
+
+## 6. SECURITY
+Hardcoded secrets. eval/exec/shell=True. Unsafe input handling.
+
+## 7. STRUCTURE
+Single responsibility violations. Repeated code. Bare excepts. Import order (stdlib > third-party > local).
+
+## 8. FIXES
+Before/after code snippet for every issue above.
+
+Code:
+{code}"""
+            }
+        ]
+    )
+    return response["message"]["content"]
