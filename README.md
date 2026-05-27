@@ -16,7 +16,11 @@ Uses **LLaMA 3** (`llama3`) running locally via **[Ollama](https://ollama.com)**
 
 ## Screenshots
 
-<!-- Add your screenshots here -->
+<img width="1673" height="969" alt="image" src="https://github.com/user-attachments/assets/4ce43391-0b45-4efe-97be-710e2d85bad2" />
+
+<img width="1697" height="936" alt="image" src="https://github.com/user-attachments/assets/b4b820ea-3cb4-43de-b622-286d8484dd7f" />
+
+
 
 ## Requirements
 
