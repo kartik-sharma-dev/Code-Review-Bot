@@ -8,11 +8,25 @@ Uses **LLaMA 3** (`llama3`) running locally via **[Ollama](https://ollama.com)**
 
 ## Features
 
-- Accepts Python code only (non-Python submissions are rejected)
+- Validates Python syntax instantly via `ast.parse` — no LLM call wasted on non-Python input
+- Runs deterministic static analysis (bare excepts, eval/exec, line length) before touching the model
 - Reviews across 7 dimensions: Bugs, Indentation, Complexity, Readability, Performance, Security, and Structure
 - Provides before/after fix snippets for every issue found
 - REST API endpoint (`POST /review`) for programmatic use
 - Fully offline — no API keys required
+
+## Architecture
+
+The bot runs two passes over submitted code:
+
+1. **Static analysis** (`ast` module, zero latency, zero API cost) — deterministic checks that don't need an LLM:
+   - Bare `except:` clauses (catches `SystemExit`/`KeyboardInterrupt`)
+   - Use of `eval()` / `exec()` (arbitrary code execution risk)
+   - Lines exceeding 79 characters (PEP 8)
+
+2. **LLM review** (LLaMA 3 via Ollama) — the static findings are injected into the prompt as context so the model focuses on what it's actually good at: bugs, logic errors, naming, complexity, performance nuance, and structural issues that can't be caught deterministically.
+
+This makes the tool faster, cheaper, and more reliable than a pure-prompting approach — the LLM isn't asked to re-detect things a parser already caught.
 
 ## Screenshots
 
